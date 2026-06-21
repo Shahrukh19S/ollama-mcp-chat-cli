@@ -1,0 +1,29 @@
+# --- Secrets: real keys live here, never commit ---
+.env
+
+# --- Python runtime / build artifacts ---
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+
+# --- Private context — must stay off the public repo ---
+# Build guide: contains personal/hardware context, keep local only.
+Module-1-Lab-BUILD-GUIDE.md
+# Internal finalize/publish guide — keep local only.
+FINALIZE-AND-PUBLISH.md
+# Private handoff / "bring back" notes — personal, keep local only.
+BRING_BACK.md
+Run_n_test.md
+WALKTHROUGH.md
+
+# --- Scratch / planning notes (anything ad hoc must not be published) ---
+*.scratch
+scratch/
+notes/
+
+# --- Screenshots / images dropped in the working dir (personal, keep out of repo) ---
+Screenshot*.png
+*.png
+*.jpg
+*.jpeg

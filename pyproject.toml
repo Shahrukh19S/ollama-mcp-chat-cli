@@ -1,0 +1,16 @@
+[project]
+name = "mcp-chat-cli"
+version = "0.1.0"
+description = "Terminal MCP chat agent with local-first Ollama and free Groq/GitHub Models cloud fallbacks."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # litellm replaces the anthropic SDK: it is a provider-agnostic layer that
+    # routes our chat calls to Ollama (local), Groq, or GitHub Models behind one
+    # OpenAI-shaped API. Crucially, it talks to Ollama via its *native* API
+    # (the "ollama_chat/" prefix) where tool calling actually works.
+    "litellm>=1.0.0",
+    "mcp[cli]>=1.8.0",
+    "prompt-toolkit>=3.0.51",
+    "python-dotenv>=1.1.0",
+]
