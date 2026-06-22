@@ -19,7 +19,7 @@ A Claude like mcp cli chat application on simulated set of document profiles bui
 - `@document` mentions and `/command` prompts with autocompletion.
 
 ## Prerequisites
-- (First) run and build the previous repository to setup local ollama + litellm tool-calling environment [repo](https://github.com/Shahrukh19S/ollama-litellm-tool-calling)
+- (First) run and build the previous repository to setup local ollama + litellm tool-calling environment [repo-here](https://github.com/Shahrukh19S/ollama-litellm-tool-calling)
 - Python 3.10+
 - [uv](https://github.com/astral-sh/uv)
 - [Ollama](https://ollama.com) running, with the model pulled: `ollama pull qwen2.5:7b`
