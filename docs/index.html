@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MCP Chat CLI — Watch a message travel through MCP</title>
+<meta name="description" content="An interactive explainer of the Model Context Protocol (MCP): watch a real message travel between a local AI model and an MCP server, back and forth, in the Ollama MCP Chat CLI." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0E1116;
+    --surface:#161B22;
+    --surface-2:#1B2230;
+    --ink:#E6EDF3;
+    --muted:#8B97A7;
+    --line:#2A323D;
+    --forward:#FFB454;   /* request / forward signal */
+    --return:#3FD0C9;    /* result / return signal */
+    --display:"Bricolage Grotesque", system-ui, sans-serif;
+    --body:"IBM Plex Sans", system-ui, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, monospace;
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--body); font-size:17px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    /* faint engineering grid */
+    background-image:
+      linear-gradient(transparent 0, transparent calc(100% - 1px), rgba(255,255,255,.012) 100%),
+      linear-gradient(90deg, transparent 0, transparent calc(100% - 1px), rgba(255,255,255,.012) 100%);
+    background-size:28px 28px;
+  }
+  a{color:inherit;}
+  ::selection{background:var(--forward); color:#0E1116;}
+  :focus-visible{outline:2px solid var(--return); outline-offset:3px; border-radius:3px;}
+
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px;}
+  .section{padding:88px 0; border-top:1px solid var(--line);}
+  .section:first-of-type{border-top:none;}
+
+  .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--muted); display:inline-flex; align-items:center; gap:10px; margin:0 0 18px;
+  }
+  .eyebrow::before{content:""; width:26px; height:1px; background:var(--forward);}
+
+  h1,h2,h3{font-family:var(--display); font-weight:700; line-height:1.04; letter-spacing:-.02em; margin:0;}
+  h1{font-size:clamp(40px, 7vw, 78px); font-weight:800;}
+  h2{font-size:clamp(28px, 4.4vw, 46px);}
+  h3{font-size:20px; letter-spacing:-.01em;}
+  p{margin:0 0 18px;}
+  .lead{font-size:clamp(18px,2.2vw,22px); color:#C4CDD9; max-width:62ch;}
+  .muted{color:var(--muted);}
+  code, .mono{font-family:var(--mono); font-size:.92em;}
+  :not(pre) > code{
+    background:var(--surface-2); border:1px solid var(--line);
+    padding:.08em .42em; border-radius:5px; color:#D7E2F0; white-space:nowrap;
+  }
+  .fwd{color:var(--forward);} .ret{color:var(--return);}
+
+  /* ---------- Hero ---------- */
+  .hero{padding-top:64px; padding-bottom:40px;}
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:22px 0; gap:16px;}
+  .brand{font-family:var(--mono); font-weight:600; letter-spacing:.02em; display:flex; align-items:center; gap:10px;}
+  .brand .dot{width:9px; height:9px; border-radius:50%; background:var(--forward);
+    box-shadow:0 0 0 4px rgba(255,180,84,.14); animation:beat 2.4s ease-in-out infinite;}
+  @keyframes beat{0%,100%{opacity:1;} 50%{opacity:.45;}}
+  .topbar nav{display:flex; gap:22px; font-size:14px; font-family:var(--mono);}
+  .topbar nav a{color:var(--muted); text-decoration:none;}
+  .topbar nav a:hover{color:var(--ink);}
+
+  .hero-grid{display:grid; grid-template-columns:1.15fr .85fr; gap:48px; align-items:center; margin-top:32px;}
+  .hero h1 span{color:var(--forward);}
+  .cta{display:flex; gap:14px; flex-wrap:wrap; margin-top:30px;}
+  .btn{
+    font-family:var(--mono); font-size:14px; font-weight:500; text-decoration:none;
+    padding:13px 20px; border-radius:9px; display:inline-flex; align-items:center; gap:9px;
+    border:1px solid var(--line); transition:transform .12s ease, border-color .12s ease, background .12s ease;
+  }
+  .btn:hover{transform:translateY(-1px);}
+  .btn-primary{background:var(--forward); color:#0E1116; border-color:var(--forward); font-weight:600;}
+  .btn-primary:hover{background:#ffc06e;}
+  .btn-ghost{background:transparent; color:var(--ink);}
+  .btn-ghost:hover{border-color:var(--return); color:var(--return);}
+
+  /* hero mini-trace */
+  .mini{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:22px 20px;
+    box-shadow:0 24px 60px -30px rgba(0,0,0,.8);}
+  .mini-head{font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); margin-bottom:18px; display:flex; justify-content:space-between;}
+  .mini svg{display:block; width:100%; height:auto;}
+  .mini-legend{display:flex; gap:18px; margin-top:16px; font-family:var(--mono); font-size:12px; color:var(--muted);}
+  .mini-legend i{display:inline-block; width:18px; height:3px; border-radius:2px; vertical-align:middle; margin-right:7px;}
+
+  /* ---------- generic cards ---------- */
+  .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:36px;}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:13px; padding:24px;}
+  .card .tag{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--forward);}
+  .card h3{margin:12px 0 8px;}
+  .card p{font-size:15px; color:#B9C3D0; margin-bottom:14px;}
+  .chips{display:flex; flex-wrap:wrap; gap:7px;}
+  .chip{font-family:var(--mono); font-size:12.5px; background:var(--surface-2); border:1px solid var(--line); color:#CBD5E1; padding:5px 9px; border-radius:6px;}
+
+  /* ---------- Signature: sequence diagram ---------- */
+  .seq-shell{margin-top:36px; background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden;}
+  .seq-canvas{overflow-x:auto;}
+  #seq{display:block; width:100%; min-width:760px; height:auto; background:
+    radial-gradient(1200px 320px at 50% -10%, rgba(255,180,84,.05), transparent 60%);}
+  .lane-label{font-family:var(--display); font-weight:700; font-size:16px; fill:var(--ink);}
+  .lane-role{font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; fill:var(--muted); text-transform:uppercase;}
+  .lifeline{stroke:var(--line); stroke-width:1; stroke-dasharray:3 6;}
+  .lane-box{fill:var(--surface-2); stroke:var(--line); rx:9;}
+  .step{transition:opacity .3s ease;}
+  .step.future{opacity:0; pointer-events:none;}
+  .step.past{opacity:.32;}
+  .step.active{opacity:1;}
+  .step.dir-f{color:var(--forward);}
+  .step.dir-r{color:var(--return);}
+  .step line{stroke:currentColor; stroke-width:2;}
+  .step path.head{fill:currentColor;}
+  .step text.arrowlbl{font-family:var(--mono); font-size:11.5px; fill:currentColor;}
+  .step.active line, .step.active path.head{filter:drop-shadow(0 0 5px currentColor);}
+  .stepnum{font-family:var(--mono); font-size:10px; font-weight:600; fill:#0E1116;}
+  .stepnum-bg{fill:currentColor;}
+  .pulse{fill:currentColor; filter:drop-shadow(0 0 6px currentColor);}
+  .loopbadge{font-family:var(--mono); font-size:10px; fill:var(--forward); letter-spacing:.1em;}
+
+  .seq-controls{display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:16px 20px; border-top:1px solid var(--line); background:var(--surface-2);}
+  .seq-controls .ctl{font-family:var(--mono); font-size:13px; background:var(--bg); color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:9px 14px; cursor:pointer; transition:border-color .12s, color .12s;}
+  .seq-controls .ctl:hover{border-color:var(--forward); color:var(--forward);}
+  .seq-controls .ctl[disabled]{opacity:.4; cursor:default;}
+  .seq-controls .ctl.play{min-width:96px;}
+  .scrub{flex:1; min-width:160px; accent-color:var(--forward); cursor:pointer;}
+  .seq-counter{font-family:var(--mono); font-size:13px; color:var(--muted); white-space:nowrap;}
+
+  .seq-detail{display:grid; grid-template-columns:1fr 1.2fr; gap:0; border-top:1px solid var(--line);}
+  .seq-info{padding:22px 24px; border-right:1px solid var(--line);}
+  .seq-info .dirbadge{font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; padding:4px 10px; border-radius:20px; display:inline-block;}
+  .dirbadge.f{background:rgba(255,180,84,.12); color:var(--forward); border:1px solid rgba(255,180,84,.4);}
+  .dirbadge.r{background:rgba(63,208,201,.12); color:var(--return); border:1px solid rgba(63,208,201,.4);}
+  .seq-info h3{margin:14px 0 6px; font-size:21px;}
+  .seq-info .fn{font-family:var(--mono); font-size:13px; color:#9FE6E1; margin-bottom:12px; word-break:break-word;}
+  .seq-info p{font-size:15px; color:#B9C3D0; margin:0;}
+  .seq-envelope{padding:0; position:relative;}
+  .seq-envelope .ehead{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); padding:14px 22px 0;}
+  .seq-envelope pre{margin:8px 0 0; padding:6px 22px 22px; overflow-x:auto; font-family:var(--mono); font-size:13px; line-height:1.55; color:#D7E2F0;}
+  .seq-envelope .k{color:var(--return);} .seq-envelope .s{color:#FFD9A6;} .seq-envelope .n2{color:#C3A6FF;} .seq-envelope .c{color:var(--muted);}
+  .legend-row{display:flex; gap:24px; flex-wrap:wrap; margin-top:20px; font-family:var(--mono); font-size:12.5px; color:var(--muted);}
+  .legend-row i{display:inline-block; width:20px; height:3px; border-radius:2px; vertical-align:middle; margin-right:8px;}
+
+  /* ---------- loop / transport / providers ---------- */
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:40px; align-items:center; margin-top:30px;}
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:13px; padding:22px;}
+  pre.block{background:#0A0D12; border:1px solid var(--line); border-radius:11px; padding:18px 20px; overflow-x:auto;
+    font-family:var(--mono); font-size:13.5px; line-height:1.7; color:#D7E2F0; margin:0;}
+  pre.block .cm{color:var(--muted);} pre.block .pr{color:var(--forward);} pre.block .kw{color:var(--return);}
+
+  .loop-steps{list-style:none; padding:0; margin:24px 0 0; counter-reset:ls;}
+  .loop-steps li{position:relative; padding:14px 0 14px 52px; border-top:1px solid var(--line);}
+  .loop-steps li::before{counter-increment:ls; content:counter(ls,decimal-leading-zero);
+    position:absolute; left:0; top:14px; font-family:var(--mono); font-size:13px; color:var(--forward);}
+  .loop-steps b{font-weight:600;}
+
+  table.prov{width:100%; border-collapse:collapse; margin-top:30px; font-size:15px;}
+  table.prov th, table.prov td{text-align:left; padding:14px 14px; border-bottom:1px solid var(--line);}
+  table.prov th{font-family:var(--mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:500;}
+  table.prov td:first-child{font-weight:600;}
+  table.prov .badge{font-family:var(--mono); font-size:11px; padding:3px 8px; border-radius:6px; background:var(--surface-2); border:1px solid var(--line); color:#CBD5E1;}
+  table.prov .local{color:var(--forward); border-color:rgba(255,180,84,.4);}
+
+  /* ---------- screenshots ---------- */
+  .shot{border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--surface); margin-top:30px;}
+  .shot img{display:block; width:100%; height:auto;}
+  .shot-cap{font-size:14px; color:var(--muted); padding:14px 18px; border-top:1px solid var(--line); font-family:var(--mono);}
+  details.insp{margin-top:22px; border:1px solid var(--line); border-radius:12px; background:var(--surface); overflow:hidden;}
+  details.insp summary{cursor:pointer; padding:18px 22px; font-family:var(--mono); font-size:14px; color:var(--ink); list-style:none;}
+  details.insp summary::-webkit-details-marker{display:none;}
+  details.insp summary::before{content:"▸ "; color:var(--forward);}
+  details.insp[open] summary::before{content:"▾ ";}
+  .insp-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px; padding:0 22px 22px;}
+  .insp-grid figure{margin:0;}
+  .insp-grid img{width:100%; height:auto; border:1px solid var(--line); border-radius:9px; display:block;}
+  .insp-grid figcaption{font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:7px;}
+
+  /* ---------- get started / footer ---------- */
+  .steps-get{counter-reset:gs; margin-top:30px;}
+  .steps-get .gstep{display:flex; gap:18px; padding:20px 0; border-top:1px solid var(--line);}
+  .steps-get .gnum{counter-increment:gs; font-family:var(--display); font-weight:800; font-size:26px; color:var(--forward); min-width:38px;}
+  .steps-get .gnum::before{content:counter(gs);}
+  .steps-get .gbody{flex:1;}
+  .steps-get .gbody h3{margin-bottom:10px;}
+  footer{border-top:1px solid var(--line); padding:40px 0 60px; color:var(--muted); font-size:14px;}
+  footer .frow{display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; align-items:center;}
+  footer a{color:var(--return); text-decoration:none;}
+
+  @media (max-width:880px){
+    .hero-grid, .split, .seq-detail{grid-template-columns:1fr;}
+    .grid-3, .insp-grid{grid-template-columns:1fr;}
+    .seq-info{border-right:none; border-bottom:1px solid var(--line);}
+    .topbar nav{display:none;}
+    .section{padding:64px 0;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    .brand .dot{animation:none;}
+    .step{transition:none;}
+    .mini .mpulse{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ===== Hero ===== -->
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span> mcp-chat-cli</div>
+    <nav>
+      <a href="#mcp">What is MCP</a>
+      <a href="#flow">Message flow</a>
+      <a href="#providers">Providers</a>
+      <a href="#start">Get started</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <p class="eyebrow">Model Context Protocol, visualized</p>
+        <h1>Watch a message travel <span>through MCP.</span></h1>
+        <p class="lead" style="margin-top:22px">
+          A Claude-like terminal chat that runs a <strong>free local model</strong> (Ollama
+          <code>qwen2.5:7b</code>) and reaches its tools through the Model Context Protocol.
+          This page traces a single message — <span class="fwd">forward</span> to the model,
+          out to an MCP server, and <span class="ret">back</span> — so you can see exactly how
+          a client and server talk.
+        </p>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://github.com/Shahrukh19S/ollama-mcp-chat-cli" target="_blank" rel="noopener">View on GitHub →</a>
+          <a class="btn btn-ghost" href="#flow">Watch the flow ↓</a>
+        </div>
+      </div>
+
+      <!-- hero mini-trace -->
+      <div class="mini" aria-hidden="true">
+        <div class="mini-head"><span>live trace</span><span>stdio</span></div>
+        <svg viewBox="0 0 360 150" role="img">
+          <!-- wire -->
+          <line x1="24" y1="46" x2="336" y2="46" stroke="#2A323D" stroke-width="1.5"/>
+          <line x1="24" y1="104" x2="336" y2="104" stroke="#2A323D" stroke-width="1.5"/>
+          <!-- nodes -->
+          <g font-family="IBM Plex Mono" font-size="9" fill="#8B97A7" text-anchor="middle">
+            <g><circle cx="24" cy="46" r="5" fill="#161B22" stroke="#FFB454"/><text x="24" y="32">you</text></g>
+            <g><circle cx="102" cy="46" r="5" fill="#161B22" stroke="#FFB454"/><text x="102" y="32">cli</text></g>
+            <g><circle cx="180" cy="46" r="5" fill="#161B22" stroke="#FFB454"/><text x="180" y="32">loop</text></g>
+            <g><circle cx="258" cy="46" r="5" fill="#161B22" stroke="#FFB454"/><text x="258" y="32">llm</text></g>
+            <g><circle cx="336" cy="46" r="5" fill="#161B22" stroke="#3FD0C9"/><text x="336" y="32">model</text></g>
+            <g><circle cx="180" cy="104" r="5" fill="#161B22" stroke="#3FD0C9"/><text x="180" y="124">mcp client</text></g>
+            <g><circle cx="336" cy="104" r="5" fill="#161B22" stroke="#3FD0C9"/><text x="336" y="124">server</text></g>
+          </g>
+          <line x1="180" y1="46" x2="180" y2="104" stroke="#2A323D" stroke-width="1.5"/>
+          <line x1="336" y1="46" x2="336" y2="104" stroke="#2A323D" stroke-dasharray="3 4" stroke-width="1"/>
+          <!-- pulses -->
+          <circle class="mpulse" r="4" fill="#FFB454">
+            <animateMotion dur="3.4s" repeatCount="indefinite"
+              keyPoints="0;0.5;0.5;1;1" keyTimes="0;0.4;0.55;0.95;1" calcMode="linear"
+              path="M24,46 L258,46 L180,46 L180,104 L336,104"/>
+          </circle>
+          <circle class="mpulse" r="4" fill="#3FD0C9">
+            <animateMotion dur="3.4s" begin="1.7s" repeatCount="indefinite"
+              path="M336,104 L180,104 L180,46 L24,46"/>
+          </circle>
+        </svg>
+        <div class="mini-legend">
+          <span><i style="background:#FFB454"></i>request</span>
+          <span><i style="background:#3FD0C9"></i>result</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== What is MCP ===== -->
+  <section class="section" id="mcp">
+    <p class="eyebrow">The protocol</p>
+    <h2>MCP gives a model three things.</h2>
+    <p class="lead" style="margin-top:18px">
+      The Model Context Protocol is a standard way for an app to expose capabilities to an LLM.
+      This CLI ships one MCP server (<code>mcp_server.py</code>) over an in-memory document store,
+      and it offers all three:
+    </p>
+    <div class="grid-3">
+      <div class="card">
+        <span class="tag">Tools</span>
+        <h3>Actions the model calls</h3>
+        <p>The model can request a function. The app runs it and feeds the result back into the conversation.</p>
+        <div class="chips"><span class="chip">read_document</span><span class="chip">edit_document</span></div>
+      </div>
+      <div class="card">
+        <span class="tag">Resources</span>
+        <h3>Data fetched by URI</h3>
+        <p>The app pulls content by address — surfaced in chat as <code>@mentions</code> you can drop inline.</p>
+        <div class="chips"><span class="chip">docs://documents</span><span class="chip">docs://documents/{id}</span><span class="chip">@welcome.md</span></div>
+      </div>
+      <div class="card">
+        <span class="tag">Prompts</span>
+        <h3>Reusable instructions</h3>
+        <p>Parameterized prompts you trigger with a slash command; they expand into messages for the model.</p>
+        <div class="chips"><span class="chip">/summarize</span><span class="chip">/format</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== THE SIGNATURE: interactive flow ===== -->
+  <section class="section" id="flow">
+    <p class="eyebrow">The signature — message flow</p>
+    <h2>One question. Watch every hop.</h2>
+    <p class="lead" style="margin-top:18px">
+      You ask: <em>“Using your tools, read equipment.pdf and tell me the recommended brew
+      temperature.”</em> Press <strong>Play</strong>, or step through. <span class="fwd">Amber</span>
+      is a request travelling outward; <span class="ret">cyan</span> is a result coming back. Notice
+      the <strong>loop</strong>: the model asks for a tool, we run it, then send the grown
+      conversation back to the model until it answers.
+    </p>
+
+    <div class="seq-shell">
+      <div class="seq-canvas">
+        <svg id="seq" viewBox="0 0 1000 660" role="img" aria-label="Interactive MCP message-flow sequence diagram"></svg>
+      </div>
+
+      <div class="seq-controls">
+        <button class="ctl play" id="btnPlay" aria-label="Play the message flow">▶ Play</button>
+        <button class="ctl" id="btnPrev" aria-label="Previous step">◀ Step</button>
+        <button class="ctl" id="btnNext" aria-label="Next step">Step ▶</button>
+        <button class="ctl" id="btnReset" aria-label="Reset to start">↺ Reset</button>
+        <input class="scrub" id="scrub" type="range" min="0" max="11" value="0" step="1" aria-label="Scrub through the message-flow steps" />
+        <span class="seq-counter" id="counter">0 / 11</span>
+      </div>
+
+      <div class="seq-detail">
+        <div class="seq-info">
+          <span class="dirbadge f" id="dDir">— </span>
+          <h3 id="dTitle">Press Play to begin</h3>
+          <div class="fn mono" id="dFn">The trace follows the real call path through the codebase.</div>
+          <p id="dDesc">Each step shows the function that runs and the JSON message on the wire at that moment.</p>
+        </div>
+        <div class="seq-envelope">
+          <div class="ehead">message on the wire</div>
+          <pre id="dJson"><span class="c">// the conversation starts empty</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend-row">
+      <span><i style="background:var(--forward)"></i>forward — request travelling outward</span>
+      <span><i style="background:var(--return)"></i>return — result coming back</span>
+      <span class="fwd">↻ loop back = the agentic tool-calling loop</span>
+    </div>
+  </section>
+
+  <!-- ===== Agent loop ===== -->
+  <section class="section" id="loop">
+    <div class="split">
+      <div>
+        <p class="eyebrow">The engine</p>
+        <h2>The agent loop is the glue.</h2>
+        <p class="lead" style="margin-top:16px">
+          <code>agent_loop.py</code> repeats one cycle until the model stops asking for tools.
+          That single rule — keep going while <code>finish_reason == "tool_calls"</code> — is what
+          lets the model read a document, see the result, and only <em>then</em> answer.
+        </p>
+        <ol class="loop-steps">
+          <li><b>List tools</b> from every MCP server and convert them to the model's function format.</li>
+          <li><b>Call the model</b> with the full conversation + the available tools.</li>
+          <li><b>Tool call?</b> Run it via the MCP client, append the result, and <span class="fwd">loop back</span> to step&nbsp;1.</li>
+          <li><b>No tool call?</b> Take the message as the final answer and break.</li>
+        </ol>
+      </div>
+      <div class="panel">
+        <pre class="block"><span class="cm"># agent/agent_loop.py — the cycle</span>
+<span class="kw">while</span> True:
+    tools = tool_manager.get_all_tools()
+    resp  = llm.chat(messages, tools)
+
+    <span class="kw">if</span> resp.finish_reason == <span class="pr">"tool_calls"</span>:
+        messages.append(resp.message)        <span class="cm"># assistant's call</span>
+        results = tool_manager.execute_tool_requests(resp)
+        messages += results                  <span class="cm"># tool output</span>
+        <span class="kw">continue</span>                             <span class="cm"># ↻ ask again</span>
+
+    <span class="kw">return</span> resp.message.content            <span class="cm"># final answer</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== stdio transport ===== -->
+  <section class="section" id="transport">
+    <div class="split">
+      <div class="panel">
+        <pre class="block"><span class="cm"># main.py — the server is a subprocess</span>
+server = StdioServerParameters(
+    command=<span class="pr">"uv"</span>,
+    args=[<span class="pr">"run"</span>, <span class="pr">"mcp_server.py"</span>],
+)
+<span class="cm"># protocol rides the pipes:</span>
+<span class="cm">#   client.stdin  ──▶ server.stdin</span>
+<span class="cm">#   server.stdout ──▶ client.stdout</span></pre>
+      </div>
+      <div>
+        <p class="eyebrow">Transport</p>
+        <h2>It talks over stdio.</h2>
+        <p class="lead" style="margin-top:16px">
+          There's no network here. The MCP server is launched as a <strong>child process</strong>,
+          and the protocol runs over its <code>stdin</code>/<code>stdout</code> pipes. The client
+          (<code>mcp_client.py</code>) writes requests in; the server writes results back out.
+        </p>
+        <p class="muted">Local-first by construction: your conversation, your documents, and your
+          model can all stay on your machine.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Providers ===== -->
+  <section class="section" id="providers">
+    <p class="eyebrow">Provider-agnostic</p>
+    <h2>One <code>.env</code> line swaps the brain.</h2>
+    <p class="lead" style="margin-top:18px">
+      Every model call goes through <a href="https://github.com/BerriAI/litellm" target="_blank" rel="noopener" style="color:var(--return)">litellm</a>,
+      which routes by the model-string prefix. Default is local and free; cloud fallbacks are one edit away.
+    </p>
+    <table class="prov">
+      <thead><tr><th>Provider</th><th>LLM_PROVIDER</th><th>LLM_MODEL</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>Ollama</td><td><code>ollama</code></td><td><code>ollama_chat/qwen2.5:7b</code></td><td><span class="badge local">local · default · $0</span></td></tr>
+        <tr><td>Groq</td><td><code>groq</code></td><td><code>groq/openai/gpt-oss-120b</code></td><td><span class="badge">cloud fallback</span></td></tr>
+        <tr><td>GitHub Models</td><td><code>github</code></td><td><code>openai/gpt-4o-mini</code></td><td><span class="badge">cloud fallback</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===== See it for real ===== -->
+  <section class="section" id="demo">
+    <p class="eyebrow">Proof</p>
+    <h2>See it for real.</h2>
+    <p class="lead" style="margin-top:18px">
+      A full session on the local model — <code>@</code>-mentions, <code>/summarize</code>,
+      <code>/format</code>, a persisted <code>edit_document</code> (Monday → Tuesday), and a clear
+      “not found” error.
+    </p>
+    <div class="shot">
+      <img src="live-demo/cli-session.png" alt="A terminal session of the MCP Chat CLI showing @-mentions, the /summarize and /format commands, a document edit, and an error message." loading="lazy" />
+      <div class="shot-cap">live-demo/cli-session.png — local qwen2.5:7b</div>
+    </div>
+
+    <details class="insp">
+      <summary>Exploring the server with the MCP Inspector — <code>uv run mcp dev mcp_server.py</code></summary>
+      <div class="insp-grid">
+        <figure><img src="live-demo/inspector-launch.png" alt="MCP Inspector launch screen" loading="lazy"/><figcaption>Inspector launch</figcaption></figure>
+        <figure><img src="live-demo/inspector-list-docs.png" alt="list_docs resource returning document ids" loading="lazy"/><figcaption>Resource · list_docs</figcaption></figure>
+        <figure><img src="live-demo/inspector-fetch-doc.png" alt="fetch_doc template returning one document's content" loading="lazy"/><figcaption>Resource · fetch_doc template</figcaption></figure>
+        <figure><img src="live-demo/inspector-prompt-format.png" alt="format prompt example in the MCP Inspector" loading="lazy"/><figcaption>Prompt · format</figcaption></figure>
+        <figure><img src="live-demo/inspector-tool-read.png" alt="read_document tool in the MCP Inspector" loading="lazy"/><figcaption>Tool · read_document</figcaption></figure>
+        <figure><img src="live-demo/inspector-tool-edit.png" alt="edit_document tool in the MCP Inspector" loading="lazy"/><figcaption>Tool · edit_document</figcaption></figure>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===== Get started ===== -->
+  <section class="section" id="start">
+    <p class="eyebrow">Run it locally</p>
+    <h2>Four commands.</h2>
+    <div class="steps-get">
+      <div class="gstep"><div class="gnum"></div><div class="gbody">
+        <h3>Pull the model</h3>
+        <pre class="block">ollama pull qwen2.5:7b</pre>
+      </div></div>
+      <div class="gstep"><div class="gnum"></div><div class="gbody">
+        <h3>Configure your environment</h3>
+        <pre class="block">cp .env.example .env   <span class="cm"># defaults to local Ollama; keys stay on your machine</span></pre>
+      </div></div>
+      <div class="gstep"><div class="gnum"></div><div class="gbody">
+        <h3>Install dependencies</h3>
+        <pre class="block">uv sync</pre>
+      </div></div>
+      <div class="gstep"><div class="gnum"></div><div class="gbody">
+        <h3>Run the CLI</h3>
+        <pre class="block">uv run main.py</pre>
+      </div></div>
+    </div>
+    <p class="muted" style="margin-top:24px">
+      Needs Python 3.10+, <a href="https://github.com/astral-sh/uv" target="_blank" rel="noopener" style="color:var(--return)">uv</a>,
+      and <a href="https://ollama.com" target="_blank" rel="noopener" style="color:var(--return)">Ollama</a> running. Use a real terminal —
+      the CLI uses <code>prompt_toolkit</code> and needs an interactive console.
+    </p>
+    <div class="cta">
+      <a class="btn btn-primary" href="https://github.com/Shahrukh19S/ollama-mcp-chat-cli" target="_blank" rel="noopener">Clone on GitHub →</a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="frow">
+      <div>MCP Chat CLI · MIT License · © 2026 Abdullah Ansari</div>
+      <div><a href="https://github.com/Shahrukh19S/ollama-mcp-chat-cli" target="_blank" rel="noopener">github.com/Shahrukh19S/ollama-mcp-chat-cli</a></div>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var NS = "http://www.w3.org/2000/svg";
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---- lane geometry ----
+  var LANES = [
+    {name:"You",        role:"human"},
+    {name:"CLI",        role:"client"},
+    {name:"Agent Loop", role:"orchestrator"},
+    {name:"LLM",        role:"model"},
+    {name:"MCP Client", role:"client"},
+    {name:"MCP Server", role:"server"}
+  ];
+  var PADX = 86, USABLE = 1000 - PADX*2, GAP = USABLE/(LANES.length-1);
+  var laneX = LANES.map(function(_,i){ return PADX + i*GAP; });
+  var HEAD_Y = 70, ROW0 = 120, ROWH = 44;
+
+  // ---- the flow ----
+  function J(parts){ return parts.join("\n"); }
+  var STEPS = [
+    { from:0, to:1, dir:"f", tag:"user message",
+      title:"You type a message",
+      fn:"terminal_ui.py · CliApp.run()",
+      desc:"The REPL reads your line at the > prompt and hands it to the chat client.",
+      json:J(['{',
+              '  <span class="k">"role"</span>: <span class="s">"user"</span>,',
+              '  <span class="k">"content"</span>: <span class="s">"Using your tools, read',
+              '    equipment.pdf and tell me the',
+              '    recommended brew temperature."</span>',
+              '}']) },
+    { from:1, to:2, dir:"f", tag:"append to messages",
+      title:"CLI pre-processes the input",
+      fn:"cli_agent.py · CliChat._process_query()",
+      desc:"Resolves @mentions and /commands, then appends the user message to the conversation.",
+      json:J(['messages = [',
+              '  { <span class="k">"role"</span>: <span class="s">"user"</span>, <span class="k">"content"</span>: <span class="s">"…brew temperature."</span> }',
+              ']']) },
+    { from:2, to:3, dir:"f", tag:"messages + tools",
+      title:"Send conversation + tools to the model",
+      fn:"agent_loop.py · Chat.run() → llm_service.py · chat()",
+      desc:"litellm routes the call to the active provider by the model-string prefix.",
+      json:J(['llm.chat(',
+              '  model = <span class="s">"ollama_chat/qwen2.5:7b"</span>,',
+              '  messages = [ … ],',
+              '  tools = [',
+              '    { <span class="k">"type"</span>:<span class="s">"function"</span>,',
+              '      <span class="k">"function"</span>:{ <span class="k">"name"</span>:<span class="s">"read_document"</span>, … } },',
+              '    { <span class="k">"function"</span>:{ <span class="k">"name"</span>:<span class="s">"edit_document"</span>, … } }',
+              '  ]',
+              ')']) },
+    { from:3, to:2, dir:"r", tag:"tool_calls ↩",
+      title:"The model requests a tool",
+      fn:'litellm.completion() → finish_reason: "tool_calls"',
+      desc:"Instead of answering, the model asks to run read_document on equipment.pdf.",
+      json:J(['{',
+              '  <span class="k">"role"</span>: <span class="s">"assistant"</span>,',
+              '  <span class="k">"tool_calls"</span>: [{',
+              '    <span class="k">"id"</span>: <span class="s">"call_01"</span>,',
+              '    <span class="k">"function"</span>: {',
+              '      <span class="k">"name"</span>: <span class="s">"read_document"</span>,',
+              '      <span class="k">"arguments"</span>: <span class="s">"{\\"doc_id\\":\\"equipment.pdf\\"}"</span>',
+              '  }}]',
+              '}']) },
+    { from:2, to:4, dir:"f", tag:"dispatch",
+      title:"Dispatch the tool call",
+      fn:"tool_manager.py · execute_tool_requests()",
+      desc:"Finds which server owns the tool and parses the JSON arguments into a dict.",
+      json:J(['name  = <span class="s">"read_document"</span>',
+              'args  = { <span class="k">"doc_id"</span>: <span class="s">"equipment.pdf"</span> }',
+              'client = registry[name]   <span class="c">// DocumentMCP</span>']) },
+    { from:4, to:5, dir:"f", tag:"tools/call (stdio)",
+      title:"Call the tool over stdio",
+      fn:"mcp_client.py · MCPClient.call_tool()",
+      desc:"An MCP request is written to the server subprocess over the stdin pipe.",
+      json:J(['{',
+              '  <span class="k">"jsonrpc"</span>: <span class="s">"2.0"</span>, <span class="k">"id"</span>: <span class="n2">7</span>,',
+              '  <span class="k">"method"</span>: <span class="s">"tools/call"</span>,',
+              '  <span class="k">"params"</span>: {',
+              '    <span class="k">"name"</span>: <span class="s">"read_document"</span>,',
+              '    <span class="k">"arguments"</span>: { <span class="k">"doc_id"</span>: <span class="s">"equipment.pdf"</span> }',
+              '  }',
+              '}']) },
+    { from:5, to:4, dir:"r", tag:"CallToolResult",
+      title:"The server runs the tool",
+      fn:"mcp_server.py · @mcp.tool read_document()",
+      desc:"The decorated function reads the in-memory store and returns a CallToolResult over stdout.",
+      json:J(['{',
+              '  <span class="k">"content"</span>: [{',
+              '    <span class="k">"type"</span>: <span class="s">"text"</span>,',
+              '    <span class="k">"text"</span>: <span class="s">"The dual-boiler machine brews',
+              '             best at 200°F (93°C)…"</span>',
+              '  }],',
+              '  <span class="k">"isError"</span>: <span class="n2">false</span>',
+              '}']) },
+    { from:4, to:2, dir:"r", tag:"tool result",
+      title:"Append the tool result",
+      fn:"tool_manager.py → messages",
+      desc:"The result becomes a tool-role message, linked back to the call by its id.",
+      json:J(['{',
+              '  <span class="k">"role"</span>: <span class="s">"tool"</span>,',
+              '  <span class="k">"tool_call_id"</span>: <span class="s">"call_01"</span>,',
+              '  <span class="k">"content"</span>: <span class="s">"…brews best at 200°F (93°C)…"</span>',
+              '}']) },
+    { from:2, to:3, dir:"f", loop:true, tag:"loop back ↻",
+      title:"Loop back to the model",
+      fn:'agent_loop.py · while finish_reason == "tool_calls"',
+      desc:"The grown conversation — now carrying the tool result — is sent to the model again. This is the agent loop.",
+      json:J(['messages = [',
+              '  { <span class="k">"role"</span>:<span class="s">"user"</span>,      … },',
+              '  { <span class="k">"role"</span>:<span class="s">"assistant"</span>, <span class="k">"tool_calls"</span>:[…] },',
+              '  { <span class="k">"role"</span>:<span class="s">"tool"</span>,      <span class="k">"content"</span>:<span class="s">"…200°F…"</span> }',
+              ']   <span class="c">// → llm.chat() again</span>']) },
+    { from:3, to:2, dir:"r", tag:"final answer",
+      title:"The model returns the final answer",
+      fn:'litellm.completion() → finish_reason: "stop"',
+      desc:"With the document in context, the model has what it needs — no more tools.",
+      json:J(['{',
+              '  <span class="k">"role"</span>: <span class="s">"assistant"</span>,',
+              '  <span class="k">"content"</span>: <span class="s">"The recommended brew temperature',
+              '    is 200°F (93°C)."</span>',
+              '}']) },
+    { from:2, to:0, dir:"r", tag:"print response",
+      title:"The answer is printed to you",
+      fn:'terminal_ui.py · prints "Response:"',
+      desc:"The loop ends and the reply lands back in your terminal.",
+      json:J(['Response:',
+              'The recommended brew temperature is',
+              '200°F (93°C).']) }
+  ];
+
+  var svg = document.getElementById("seq");
+  var TOTAL = STEPS.length;
+  var stepGroups = [];
+  var pulse = null;
+
+  function el(tag, attrs){
+    var e = document.createElementNS(NS, tag);
+    for(var k in attrs){ e.setAttribute(k, attrs[k]); }
+    return e;
+  }
+
+  function build(){
+    var H = ROW0 + TOTAL*ROWH + 30;
+    svg.setAttribute("viewBox", "0 0 1000 " + H);
+
+    // lane headers + lifelines
+    LANES.forEach(function(lane, i){
+      var x = laneX[i];
+      var bw = GAP*0.82, bx = x - bw/2;
+      svg.appendChild(el("rect", {x:bx, y:20, width:bw, height:40, rx:9, class:"lane-box"}));
+      var t = el("text", {x:x, y:39, "text-anchor":"middle", class:"lane-label"}); t.textContent = lane.name;
+      svg.appendChild(t);
+      var r = el("text", {x:x, y:52, "text-anchor":"middle", class:"lane-role"}); r.textContent = lane.role;
+      svg.appendChild(r);
+      svg.appendChild(el("line", {x1:x, y1:HEAD_Y, x2:x, y2:H-16, class:"lifeline"}));
+    });
+
+    // step arrows
+    STEPS.forEach(function(s, idx){
+      var y = ROW0 + idx*ROWH;
+      var x1 = laneX[s.from], x2 = laneX[s.to];
+      var right = x2 > x1;
+      var g = el("g", {class:"step future dir-" + s.dir});
+
+      // shorten so arrowhead sits cleanly at the lane
+      var sx = x1 + (right ? 7 : -7), ex = x2 + (right ? -9 : 9);
+      g.appendChild(el("line", {x1:sx, y1:y, x2:ex, y2:y}));
+
+      // arrowhead
+      var dir = right ? 1 : -1;
+      var hx = x2 + (right ? -2 : 2);
+      var head = el("path", {class:"head",
+        d:"M"+hx+","+y+" L"+(hx-9*dir)+","+(y-5)+" L"+(hx-9*dir)+","+(y+5)+" Z"});
+      g.appendChild(head);
+
+      // step number chip at source
+      g.appendChild(el("circle", {cx:x1, cy:y, r:9, class:"stepnum-bg"}));
+      var num = el("text", {x:x1, y:y+3.4, "text-anchor":"middle", class:"stepnum"});
+      num.textContent = (idx+1); g.appendChild(num);
+
+      // arrow label centered above the line
+      var lbl = el("text", {x:(x1+x2)/2, y:y-8, "text-anchor":"middle", class:"arrowlbl"});
+      lbl.textContent = s.tag; g.appendChild(lbl);
+
+      if(s.loop){
+        var lp = el("text", {x:(x1+x2)/2, y:y+16, "text-anchor":"middle", class:"loopbadge"});
+        lp.textContent = "AGENT LOOP"; g.appendChild(lp);
+      }
+
+      svg.appendChild(g);
+      stepGroups.push({g:g, s:s, y:y, sx:sx, ex:ex});
+    });
+
+    // pulse dot (rides the active arrow)
+    pulse = el("circle", {r:5, class:"pulse", style:"opacity:0"});
+    svg.appendChild(pulse);
+  }
+
+  // ---- panel + state ----
+  var dDir = document.getElementById("dDir"),
+      dTitle = document.getElementById("dTitle"),
+      dFn = document.getElementById("dFn"),
+      dDesc = document.getElementById("dDesc"),
+      dJson = document.getElementById("dJson"),
+      counter = document.getElementById("counter"),
+      scrub = document.getElementById("scrub");
+
+  var current = 0;          // 0 = nothing yet; 1..TOTAL = step shown
+  var playing = false, playTimer = null, rafId = null;
+
+  function paintPanel(i){
+    if(i === 0){
+      dDir.className = "dirbadge f"; dDir.textContent = "— ";
+      dTitle.textContent = "Press Play to begin";
+      dFn.textContent = "The trace follows the real call path through the codebase.";
+      dDesc.textContent = "Each step shows the function that runs and the JSON message on the wire at that moment.";
+      dJson.innerHTML = '<span class="c">// the conversation starts empty</span>';
+      return;
+    }
+    var s = STEPS[i-1];
+    dDir.className = "dirbadge " + s.dir;
+    dDir.textContent = (s.dir === "f" ? "forward →" : "← return");
+    dTitle.textContent = s.title;
+    dFn.textContent = s.fn;
+    dDesc.textContent = s.desc;
+    dJson.innerHTML = s.json;
+  }
+
+  function render(i){
+    current = i;
+    stepGroups.forEach(function(o, idx){
+      var n = idx + 1;
+      var cls = "step dir-" + o.s.dir + " " + (n < i ? "past" : (n === i ? "active" : "future"));
+      o.g.setAttribute("class", cls);
+    });
+    counter.textContent = i + " / " + TOTAL;
+    scrub.value = i;
+    paintPanel(i);
+    movePulse(i);
+  }
+
+  function movePulse(i){
+    if(rafId){ cancelAnimationFrame(rafId); rafId = null; }
+    if(i === 0){ pulse.style.opacity = 0; return; }
+    var o = stepGroups[i-1];
+    var color = (o.s.dir === "f") ? getCSS("--forward") : getCSS("--return");
+    pulse.setAttribute("fill", color);
+    pulse.setAttribute("cy", o.y);
+    if(reduce){
+      pulse.style.opacity = 0;       // no travelling dot under reduced motion
+      return;
+    }
+    pulse.style.opacity = 1;
+    var start = performance.now(), dur = 620;
+    var a = o.sx, b = o.ex;
+    function tick(now){
+      var t = Math.min(1, (now - start)/dur);
+      var e = t<.5 ? 2*t*t : -1+(4-2*t)*t;   // easeInOut
+      pulse.setAttribute("cx", a + (b-a)*e);
+      if(t < 1){ rafId = requestAnimationFrame(tick); }
+      else { pulse.style.opacity = 0; }
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function getCSS(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+  // ---- controls ----
+  function stopPlay(){
+    playing = false;
+    document.getElementById("btnPlay").textContent = "▶ Play";
+    if(playTimer){ clearTimeout(playTimer); playTimer = null; }
+  }
+  function advance(){
+    if(current >= TOTAL){ stopPlay(); return; }
+    render(current + 1);
+    if(playing){
+      playTimer = setTimeout(advance, reduce ? 850 : 1150);
+    }
+  }
+  function startPlay(){
+    if(current >= TOTAL){ render(0); }
+    playing = true;
+    document.getElementById("btnPlay").textContent = "❚❚ Pause";
+    advance();
+  }
+
+  document.getElementById("btnPlay").addEventListener("click", function(){
+    playing ? stopPlay() : startPlay();
+  });
+  document.getElementById("btnNext").addEventListener("click", function(){
+    stopPlay(); render(Math.min(TOTAL, current + 1));
+  });
+  document.getElementById("btnPrev").addEventListener("click", function(){
+    stopPlay(); render(Math.max(0, current - 1));
+  });
+  document.getElementById("btnReset").addEventListener("click", function(){
+    stopPlay(); render(0);
+  });
+  scrub.addEventListener("input", function(){
+    stopPlay(); render(parseInt(this.value, 10));
+  });
+
+  // ---- init ----
+  build();
+  render(0);
+
+  // auto-start once the diagram scrolls into view (unless reduced motion)
+  if(!reduce && "IntersectionObserver" in window){
+    var seen = false;
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting && !seen){ seen = true; startPlay(); io.disconnect(); }
+      });
+    }, {threshold:0.4});
+    io.observe(document.getElementById("flow"));
+  }
+})();
+</script>
+</body>
+</html>
