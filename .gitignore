@@ -22,8 +22,5 @@ WALKTHROUGH.md
 scratch/
 notes/
 
-# --- Screenshots / images dropped in the working dir (personal, keep out of repo) ---
+# --- Screenshots: raw Windows dumps stay out; curated live-demo/ images ARE committed ---
 Screenshot*.png
-*.png
-*.jpg
-*.jpeg

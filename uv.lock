@@ -194,25 +194,6 @@ wheels = [
 ]
 
 [[package]]
-name = "app"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "litellm" },
-    { name = "mcp", extra = ["cli"] },
-    { name = "prompt-toolkit" },
-    { name = "python-dotenv" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "litellm", specifier = ">=1.0.0" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.8.0" },
-    { name = "prompt-toolkit", specifier = ">=3.0.51" },
-    { name = "python-dotenv", specifier = ">=1.1.0" },
-]
-
-[[package]]
 name = "async-timeout"
 version = "5.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1134,6 +1115,25 @@ wheels = [
 cli = [
     { name = "python-dotenv" },
     { name = "typer" },
+]
+
+[[package]]
+name = "mcp-chat-cli"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "litellm" },
+    { name = "mcp", extra = ["cli"] },
+    { name = "prompt-toolkit" },
+    { name = "python-dotenv" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "litellm", specifier = ">=1.0.0" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.8.0" },
+    { name = "prompt-toolkit", specifier = ">=3.0.51" },
+    { name = "python-dotenv", specifier = ">=1.1.0" },
 ]
 
 [[package]]

@@ -18,8 +18,39 @@ A Claude like mcp cli chat application on simulated set of document profiles bui
 - **Agentic tool-calling loop** — the model can read and edit documents to answer questions.
 - `@document` mentions and `/command` prompts with autocompletion.
 
-## Prerequisites
+## Demo
 
+A full session on the local model (`qwen2.5:7b`) — `@`-mentions, `/summarize`, `/format`, a
+persisted `edit_document` (`Monday` → `Tuesday`), a clear "not found" error, and the
+bare-`/command` usage hint:
+
+![CLI session](live-demo/cli-session.png)
+
+<details>
+<summary><b>Exploring the server with the MCP Inspector</b> (click to expand)</summary>
+
+Launch it with `uv run mcp dev mcp_server.py`:
+
+![Inspector launch](live-demo/inspector-launch.png)
+
+**Resources** — `list_docs` returns the document ids; the `fetch_doc` template returns one document:
+
+![list_docs resource](live-demo/inspector-list-docs.png)
+![fetch_doc template](live-demo/inspector-fetch-doc.png)
+
+**Prompts** — e.g. `format`:
+
+![format prompt](live-demo/inspector-prompt-format.png)
+
+**Tools** — `read_document` and `edit_document`:
+
+![read_document tool](live-demo/inspector-tool-read.png)
+![edit_document tool](live-demo/inspector-tool-edit.png)
+
+</details>
+
+## Prerequisites
+- (First) run and build the previous repository to setup local ollama + litellm tool-calling environment [repo-here](https://github.com/Shahrukh19S/ollama-litellm-tool-calling)
 - Python 3.10+
 - [uv](https://github.com/astral-sh/uv)
 - [Ollama](https://ollama.com) running, with the model pulled: `ollama pull qwen2.5:7b`
@@ -100,6 +131,15 @@ uv run mcp dev mcp_server.py
 
 Opens the MCP Inspector in your browser to browse and call the server's tools, resources, and
 prompts.
+
+> **First run:** the Inspector is a Node tool (`@modelcontextprotocol/inspector`) that `mcp dev`
+> launches via `npx`, so the first run prompts to install it — answer `y`. To skip the prompt
+> next time, pre-install it once: `npm install -g @modelcontextprotocol/inspector`.
+>
+> **Tip:** the document list is the resource `docs://documents` (returns the id list), while each
+> document's content is the template `docs://documents/{doc_id}`. In the Inspector, click
+> **List Resources → list_docs** for the id list; if a panel instead shows a single document's
+> text, that's the `{doc_id}` template's result — hit **Refresh** or re-select `list_docs`.
 
 ## Project layout
 
