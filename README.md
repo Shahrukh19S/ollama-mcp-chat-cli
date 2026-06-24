@@ -9,6 +9,8 @@ behind one provider-agnostic layer powered by [litellm](https://github.com/Berri
 ## ONE-LINER:
 A Claude like mcp cli chat application on simulated set of document profiles built on all free AI models
 
+📄 **Live project page:** https://shahrukh19s.github.io/ollama-mcp-chat-cli/
+
 ## Features
 
 - **Local-first:** runs `qwen2.5:7b` on your machine — $0, offline, private.
